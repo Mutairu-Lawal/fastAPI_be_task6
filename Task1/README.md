@@ -14,7 +14,9 @@ This project contains FastAPI code for Task 1.
    ```
 
 ## Files
+
 - `main.py`: Main FastAPI application.
 
 ## Notes
+
 - Make sure Python 3.11+ is installed.
