@@ -1,15 +1,15 @@
 # auth.py
 from datetime import datetime, timedelta, timezone
-from fastapi import HTTPException, Depends, status
+from fastapi import HTTPException, Depends
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from typing import Optional
 import jwt
-import json
-import os
+from utils import load_db
 
 # ===== Security Config =====
-SECRET_KEY = os.getenv("SECRET_KEY", "CHANGE_ME_IN_PRODUCTION")
+# SECRET_KEY = os.getenv("SECRET_KEY", "CHANGE_ME_IN_PRODUCTION")
+SECRET_KEY = "d87edbda5f336c97ce3823704313ecd4743ca6760c71bb7614484e79e4913837"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
@@ -18,26 +18,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 USERS_FILE = "users.json"
 
-# ===== Helper: File Load/Save =====
-
-
-def load_users():
-    if not os.path.exists(USERS_FILE):
-        return []
-    try:
-        with open(USERS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except json.JSONDecodeError:
-        return []
-
-
-def save_users(users):
-    with open(USERS_FILE, "w", encoding="utf-8") as f:
-        json.dump(users, f, indent=4)
 
 # ===== Password helpers =====
-
-
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
@@ -45,9 +27,8 @@ def hash_password(password: str) -> str:
 def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
+
 # ===== JWT helpers =====
-
-
 def create_access_token(subject: str, role: str, expires_delta: Optional[timedelta] = None) -> str:
     expire = datetime.now(
         timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
@@ -64,25 +45,23 @@ def decode_access_token(token: str):
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+
 # ===== Auth logic =====
-
-
 def authenticate_user(username: str, password: str):
-    users = load_users()
+    users = load_db(USERS_FILE)
     for u in users:
         if u["username"] == username and verify_password(password, u["password"]):
             return u
     return None
 
+
 # ===== Dependencies =====
-
-
 def get_current_user(token: str = Depends(oauth2_scheme)):
     payload = decode_access_token(token)
     username = payload.get("sub")
     if not username:
         raise HTTPException(status_code=401, detail="Invalid token")
-    users = load_users()
+    users = load_db(USERS_FILE)
     user = next((u for u in users if u["username"] == username), None)
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
