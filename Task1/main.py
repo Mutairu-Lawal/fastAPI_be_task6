@@ -73,6 +73,10 @@ def register(student: Student):
     if any(s["username"] == student.username for s in students):
         raise HTTPException(status_code=400, detail="Username already exists")
 
+    # checking if user send empty data
+    if not student.grades:
+        raise HTTPException(status_code=400, detail="Grades is required")
+
     # Store hashed password
     hashed_pw = hash_password(student.password)
     students.append({
